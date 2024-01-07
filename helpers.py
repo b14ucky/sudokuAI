@@ -1,10 +1,8 @@
 import pandas as pd
 import numpy as np
 from pynput import mouse
-
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
-import numpy as np
 
 
 class CustomDataset(Dataset):
@@ -34,34 +32,6 @@ class CustomDataset(Dataset):
             pixels = self.transform(pixels)
 
         return pixels, label
-
-
-class ImageDataLoader:
-    @staticmethod
-    def load_data(path):
-        data = pd.read_csv(path, sep=";")
-        data = data.sample(frac=1).reset_index(drop=True)
-        pixels = data["Pixels"].tolist()
-        labels = data["Labels"].tolist()
-
-        image_size = (28, 28)
-
-        numbers = []
-        for pixel_sequence in pixels:
-            pixel = [int(pixel) for pixel in pixel_sequence.split(" ")]
-            pixel = np.asarray(pixel).reshape(*image_size)
-
-            pixel = np.resize(pixel.astype("uint8"), image_size)
-            numbers.append(pixel.astype("uint8"))
-
-        numbers = np.asarray(numbers)
-
-        train_numbers = numbers[: int(0.8 * len(numbers))]
-        train_labels = labels[: int(0.8 * len(labels))]
-        test_numbers = numbers[int(0.8 * len(numbers)) :]
-        test_labels = labels[int(0.8 * len(labels)) :]
-
-        return (train_numbers, train_labels), (test_numbers, test_labels)
 
 
 class MouseListener:
