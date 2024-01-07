@@ -93,6 +93,12 @@ class NumberRecognitionModel:
 
             print(f"Wrong: {wrong}/{number_of_predictions}")
 
+    def predict(self, data):
+        with torch.no_grad():
+            output = self.net(data.view(1, 1, 28, 28))
+            _, predicted = torch.max(output.data, 1)
+            return predicted[0].item()
+
     def save(self, path):
         torch.save(self.net.state_dict(), path)
 
