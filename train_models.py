@@ -2,7 +2,7 @@ from models import NumberRecognitionModel
 from helpers import CustomDataset
 from torch.utils.data import DataLoader, random_split
 
-model = NumberRecognitionModel()
+model = NumberRecognitionModel(lr=0.001)
 
 n_epochs = 10
 batch_size_train = 64
@@ -24,7 +24,7 @@ examples = enumerate(test_loader)
 batch_idx, (example_data, example_targets) = next(examples)
 
 # model.load("model.pth")
-# model.train(train_loader, test_loader, epochs=500)
+# model.train(train_loader, test_loader, epochs=50)
 # model.save("model.pth")
 # model.plot()
 
