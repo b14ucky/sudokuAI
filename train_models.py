@@ -8,7 +8,7 @@ n_epochs = 10
 batch_size_train = 64
 batch_size_test = 500
 
-custom_dataset = CustomDataset("numbers.csv")
+custom_dataset = CustomDataset("./dataset/numbers.csv")
 
 train_size = int(0.8 * len(custom_dataset))
 test_size = len(custom_dataset) - train_size

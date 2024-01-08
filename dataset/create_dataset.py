@@ -2,12 +2,12 @@ import os
 import pyautogui
 import cv2
 
-from mouse_listener import MouseListener
+from helpers import MouseListener
 
 mouse_listener = MouseListener()
 mouse_listener.wait_for_click()
 
-num = "seven"
+num = "nine"
 
 if mouse_listener.mouse_clicked:
     x, y = pyautogui.position()
@@ -37,7 +37,7 @@ if mouse_listener.mouse_clicked:
         cell_resized = cv2.resize(cell, (28, 28))
 
         # Save the cell image in the output directory
-        cell_filename = os.path.join(output_dir, f"{num}_{0 + i}.png")
+        cell_filename = os.path.join(output_dir, f"{num}_{243 + i}.png")
         cv2.imwrite(cell_filename, cell_resized)
 
     print(f"Cell images saved in the '{num}' directory.")
