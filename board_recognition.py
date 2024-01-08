@@ -1,6 +1,6 @@
 import pyautogui
 import cv2
-from helpers import MouseListener
+from helpers import MouseListener, display_board
 from models import NumberRecognitionModel
 from torch import from_numpy
 import numpy as np
@@ -39,17 +39,4 @@ if mouse_listener.mouse_clicked:
         prediction = model.predict(from_numpy(cell))
         board[i // 9][i % 9] = prediction
 
-    fig, ax = plt.subplots()
-    ax.axis("off")
-
-    table = ax.table(
-        cellText=board, loc="center", cellLoc="center", colWidths=[0.1] * len(board[0])
-    )
-    table.auto_set_font_size(False)
-    table.set_fontsize(14)
-
-    for i in range(len(board[0])):
-        for j in range(len(board[0])):
-            table[(i, j)].set_height(0.1)
-
-    plt.show()
+    display_board(board)

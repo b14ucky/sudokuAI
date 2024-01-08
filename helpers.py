@@ -3,6 +3,7 @@ import numpy as np
 from pynput import mouse
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
+import matplotlib.pyplot as plt
 
 
 class CustomDataset(Dataset):
@@ -50,3 +51,27 @@ class MouseListener:
         )
         self.listener.start()
         self.listener.join()
+
+
+def display_board(board):
+    fig, ax = plt.subplots()
+    ax.axis("off")
+
+    plt.title('Check if the board is correct and press "y" to continue.', pad=20)
+
+    display_array = np.where(np.isin(board, 0), None, board)
+
+    table = ax.table(
+        cellText=display_array,
+        loc="center",
+        cellLoc="center",
+        colWidths=[0.1] * len(board[0]),
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(14)
+
+    for i in range(len(display_array[0])):
+        for j in range(len(display_array[0])):
+            table[(i, j)].set_height(0.125)
+
+    plt.show()
