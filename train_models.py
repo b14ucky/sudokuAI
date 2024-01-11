@@ -1,8 +1,6 @@
-from models import NumberRecognitionModel
+from models import NumberRecognitionTrainer
 from helpers import CustomDataset
 from torch.utils.data import DataLoader, random_split
-
-model = NumberRecognitionModel(lr=0.001)
 
 n_epochs = 10
 batch_size_train = 64
@@ -20,15 +18,17 @@ train_loader = DataLoader(
 )
 test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size_test, shuffle=True)
 
+trainer = NumberRecognitionTrainer(train_loader, test_loader, lr=0.0001, momentum=0.5)
+
 examples = enumerate(test_loader)
 batch_idx, (example_data, example_targets) = next(examples)
 
-# model.load("model.pth")
-# model.train(train_loader, test_loader, epochs=50)
-# model.save("model.pth")
-# model.plot()
+# trainer.load()
+# trainer.train(epochs=5, log_interval=10)
+# trainer.save()
+# trainer.plot()
 
-model.load("model.pth")
-model.test_prediction(
+trainer.load()
+trainer.test_prediction(
     example_data, example_targets, number_of_predictions=len(example_data)
 )
