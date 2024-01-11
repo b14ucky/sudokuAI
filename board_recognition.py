@@ -4,11 +4,9 @@ from helpers import MouseListener, display_board
 from models import NumberRecognitionModel
 from torch import from_numpy
 import numpy as np
-import matplotlib.pyplot as plt
 
 model = NumberRecognitionModel()
-
-model.load("model.pth")
+model.load()
 
 mouse_listener = MouseListener()
 mouse_listener.wait_for_click()
