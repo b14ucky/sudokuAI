@@ -11,8 +11,8 @@ class NumberRecognitionModel(nn.Module):
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
         self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
         self.conv2_drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, 10)
+        self.fc1 = nn.Linear(320, 512)
+        self.fc2 = nn.Linear(512, 10)
 
     def forward(self, x):
         x = F.relu(F.max_pool2d(self.conv1(x), 2))
@@ -22,6 +22,16 @@ class NumberRecognitionModel(nn.Module):
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
+
+    def load(self, file_name="NRmodel"):
+        self.load_state_dict(torch.load(f"{file_name}.pth"))
+
+    def predict(self, data):
+        self.eval()
+        with torch.no_grad():
+            output = self(data.view(1, 1, 28, 28))
+            _, predicted = torch.max(output.data, 1)
+            return predicted[0].item()
 
 
 class NumberRecognitionTrainer:
@@ -60,7 +70,7 @@ class NumberRecognitionTrainer:
 
                 if batch_idx % log_interval == 0:
                     print(
-                        f"Epoch: {epoch + 1} / {epochs} [{batch_idx * len(data)}/{len(self.train_loader.dataset)} ({100.0 * batch_idx / len(self.train_loader):.0f}%)]\tLoss: {loss.item():.6f}"
+                        f"Epoch: {epoch + 1} / {epochs} [{batch_idx * len(data) if len(data) == 64 else len(self.train_loader.dataset) - len(data)}/{len(self.train_loader.dataset)} ({100.0 * batch_idx / len(self.train_loader):.0f}%)]\tLoss: {loss.item():.6f}"
                     )
 
                     self.train_losses.append(loss.item())
@@ -93,6 +103,7 @@ class NumberRecognitionTrainer:
     def test_prediction(
         self, prediction_data, prediction_target, number_of_predictions=5
     ):
+        self.model.eval()
         for _ in range(10):
             wrong = 0
             with torch.no_grad():
@@ -107,18 +118,12 @@ class NumberRecognitionTrainer:
 
             print(f"Wrong: {wrong}/{number_of_predictions}")
 
-    def predict(self, data):
-        with torch.no_grad():
-            output = self.model(data.view(1, 1, 28, 28))
-            _, predicted = torch.max(output.data, 1)
-            return predicted[0].item()
-
     def save(self, file_name="NRmodel"):
         torch.save(self.model.state_dict(), f"{file_name}.pth")
         torch.save(self.optimizer.state_dict(), f"{file_name}-optimizer.pth")
 
     def load(self, file_name="NRmodel"):
-        self.model.load_state_dict(torch.load(file_name))
+        self.model.load_state_dict(torch.load(f"{file_name}.pth"))
         self.optimizer.load_state_dict(torch.load(f"{file_name}-optimizer.pth"))
 
     def plot(self):
