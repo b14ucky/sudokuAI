@@ -152,3 +152,42 @@ class NumberRecognitionTrainer:
         plt.xlabel("number of training examples seen")
         plt.ylabel("negative log likelihood loss")
         plt.show()
+
+
+class SudokuSolverTrainer:
+    def __init__(self, model, lr, gamma):
+        self.model = model
+        self.lr = lr
+        self.gamma = gamma
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+        self.criterion = nn.MSELoss()
+
+    def train_step(self, state, action, reward, next_state, done):
+        next_state = torch.tensor(next_state, dtype=torch.float)
+        action = torch.tensor(action, dtype=torch.long)
+        reward = torch.tensor(reward, dtype=torch.float)
+
+        if len(state.shape) == 1:
+            state = torch.unsqueeze(state, 0)
+            next_state = torch.unsqueeze(next_state, 0)
+            action = torch.unsqueeze(action, 0)
+            reward = torch.unsqueeze(reward, 0)
+            done = (done,)
+
+        prediction = self.model(state)
+
+        target = prediction.clone()
+        for index in range(len(done)):
+            Q_new = reward[index]
+            if not done[index]:
+                Q_new = reward[index] + self.gamma * torch.max(
+                    self.model(next_state[index])
+                )
+
+            target[index][torch.argmax(action[index]).item()] = Q_new
+
+        self.optimizer.zero_grad()
+        loss = self.criterion(target, prediction)
+        loss.backward()
+
+        self.optimizer.step()
