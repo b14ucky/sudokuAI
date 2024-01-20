@@ -191,3 +191,11 @@ class SudokuSolverTrainer:
         loss.backward()
 
         self.optimizer.step()
+
+    def save(self, file_name="solver"):
+        torch.save(self.model.state_dict(), f"{file_name}.pth")
+        torch.save(self.optimizer.state_dict(), f"{file_name}-optimizer.pth")
+
+    def load(self, file_name="solver"):
+        self.model.load_state_dict(torch.load(f"{file_name}.pth"))
+        self.optimizer.load_state_dict(torch.load(f"{file_name}-optimizer.pth"))
