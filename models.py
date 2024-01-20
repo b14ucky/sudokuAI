@@ -34,6 +34,25 @@ class NumberRecognitionModel(nn.Module):
             return predicted[0].item()
 
 
+class SudokuSolverModel(nn.Module):
+    def __init__(self):
+        super(SudokuSolverModel, self).__init__()
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(9 * 9 * 9, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 9 * 9 * 9)
+
+    def forward(self, x):
+        x = self.flatten(x)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.softmax(self.fc3(x), dim=1)
+        return x
+
+    def load(self, file_name="solver"):
+        self.load_state_dict(torch.load(f"{file_name}.pth"))
+
+
 class NumberRecognitionTrainer:
     def __init__(self, train_loader, test_loader, lr=0.01, momentum=0.5):
         self.model = NumberRecognitionModel()
