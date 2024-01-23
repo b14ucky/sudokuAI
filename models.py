@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import matplotlib.pyplot as plt
+from helpers import convert_to_tensor
 
 
 class NumberRecognitionModel(nn.Module):
@@ -38,9 +39,9 @@ class SudokuSolverModel(nn.Module):
     def __init__(self):
         super(SudokuSolverModel, self).__init__()
         self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(9 * 9 * 9, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 9 * 9 * 9)
+        self.fc1 = nn.Linear(9 * 9 * 9, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 9 * 9 * 9)
 
     def forward(self, x):
         x = self.flatten(x)
@@ -163,25 +164,24 @@ class SudokuSolverTrainer:
         self.criterion = nn.MSELoss()
 
     def train_step(self, state, action, reward, next_state, done):
-        next_state = torch.tensor(next_state, dtype=torch.float)
         action = torch.tensor(action, dtype=torch.long)
         reward = torch.tensor(reward, dtype=torch.float)
 
-        if len(state.shape) == 1:
-            state = torch.unsqueeze(state, 0)
-            next_state = torch.unsqueeze(next_state, 0)
+        if len(state.shape) == 2:
+            state = torch.unsqueeze(convert_to_tensor(state), 0)
+            next_state = torch.unsqueeze(convert_to_tensor(next_state), 0)
             action = torch.unsqueeze(action, 0)
             reward = torch.unsqueeze(reward, 0)
             done = (done,)
 
-        prediction = self.model(state)
+        prediction = self.model(convert_to_tensor(state))
 
         target = prediction.clone()
         for index in range(len(done)):
             Q_new = reward[index]
             if not done[index]:
                 Q_new = reward[index] + self.gamma * torch.max(
-                    self.model(next_state[index])
+                    self.model(convert_to_tensor(next_state[index]))
                 )
 
             target[index][torch.argmax(action[index]).item()] = Q_new

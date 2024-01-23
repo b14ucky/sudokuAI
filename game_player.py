@@ -3,18 +3,30 @@ from time import sleep
 
 
 class GamePlayer:
-    def __init__(self, board_left_corner_coordinates):
+    def __init__(self, board_left_corner_coordinates, board):
         self.board_left_corner_coordinates = board_left_corner_coordinates
-        self.mistakes = 0
+        self.in_game_mistakes = 0
+        self.board = board
 
-    def insert_value(self, board, column_number, row_number, value):
+    def insert_value(self, column_number, row_number, value):
         # check if the cell is empty and if the value will be valid in that cell
-        if board[row_number][column_number] != 0:
+        if self.board[row_number][column_number] != 0:
+            reward = -20
+            return (
+                reward,
+                True if self.in_game_mistakes >= 3 or self.board_filled() else False,
+                self.in_game_mistakes,
+            )
+
+        self.board[row_number][column_number] = value
+
+        if not self.validate_board(column_number, row_number):
             reward = -10
-            return reward, False
-        if not self.validate_board(board, column_number, row_number, value):
-            reward = -10
-            return reward, False
+            return (
+                reward,
+                True if self.in_game_mistakes >= 3 or self.board_filled() else False,
+                self.in_game_mistakes,
+            )
 
         # insert the value into the cell
         x, y = self.board_left_corner_coordinates
@@ -28,13 +40,21 @@ class GamePlayer:
         # check if the value was inserted correctly
         if self.check_for_mistake(column_number, row_number):
             reward = -10
-            self.mistakes += 1
-            return reward, False
-        reward = 10 if self.board_filled(board) else 1
+            self.in_game_mistakes += 1
+            return (
+                reward,
+                True if self.in_game_mistakes >= 3 or self.board_filled() else False,
+                self.in_game_mistakes,
+            )
+        reward = 20 if self.board_filled() else 10
 
-        return reward, True
+        return (
+            reward,
+            True if self.in_game_mistakes >= 3 or self.board_filled() else False,
+            self.in_game_mistakes,
+        )
 
-    def validate_board(self, board, column_number, row_number):
+    def validate_board(self, column_number, row_number):
         def is_valid(nums):
             seen = set()
             for num in nums:
@@ -43,26 +63,23 @@ class GamePlayer:
                 seen.add(num)
             return True
 
-        for row in board:
+        for row in self.board:
             if not is_valid(row):
-                board[row_number][column_number] = 0
                 return False
 
         for col in range(9):
-            column = [board[row][col] for row in range(9)]
+            column = [self.board[row][col] for row in range(9)]
             if not is_valid(column):
-                board[row_number][column_number] = 0
                 return False
 
         for i in range(0, 9, 3):
             for j in range(0, 9, 3):
                 subgrid = [
-                    board[row][col]
+                    self.board[row][col]
                     for row in range(i, i + 3)
                     for col in range(j, j + 3)
                 ]
                 if not is_valid(subgrid):
-                    board[row_number][column_number] = 0
                     return False
 
         return True
@@ -82,8 +99,8 @@ class GamePlayer:
             return True
         return False
 
-    def board_filled(self, board):
-        for row in board:
+    def board_filled(self):
+        for row in self.board:
             for value in row:
                 if value == 0:
                     return False

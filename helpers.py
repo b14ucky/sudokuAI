@@ -1,3 +1,4 @@
+import torch
 import pandas as pd
 import numpy as np
 from pynput import mouse
@@ -75,3 +76,17 @@ def display_board(board):
             table[(i, j)].set_height(0.125)
 
     plt.show()
+
+
+def convert_to_tensor(board):
+    if torch.is_tensor(board):
+        return board.view(1, 9, 9, 9)
+    tensor = torch.zeros(9, 9, 9)
+
+    for i in range(9):
+        for j in range(9):
+            digit = board[i, j]
+            if digit != 0:
+                tensor[i, j, digit - 1] = 1
+
+    return tensor.view(1, 9, 9, 9)
