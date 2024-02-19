@@ -1,6 +1,5 @@
 import pyautogui
 import cv2
-from helpers import display_board
 from models import NumberRecognitionModel
 from torch import from_numpy
 import numpy as np
@@ -18,9 +17,7 @@ class BoardRecognizer:
         screenshot.save("sudoku_board.png")
 
         image = cv2.imread("sudoku_board.png", cv2.IMREAD_GRAYSCALE)
-        _, image = cv2.threshold(
-            image, 128, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
-        )
+        _, image = cv2.threshold(image, 128, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
         image = cv2.bitwise_not(image)
 
         cell_size = image.shape[0] // 9
@@ -35,7 +32,5 @@ class BoardRecognizer:
             cell = cv2.resize(cell, (28, 28)).astype(np.float32)
             prediction = self.model.predict(from_numpy(cell))
             board[i // 9][i % 9] = prediction
-
-        # display_board(board)
 
         return board
