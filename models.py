@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import matplotlib.pyplot as plt
-from helpers import convert_to_tensor
+from helpers import normalize, denormalize
 
 
 class NumberRecognitionModel(nn.Module):
@@ -38,17 +38,65 @@ class NumberRecognitionModel(nn.Module):
 class SudokuSolverModel(nn.Module):
     def __init__(self):
         super(SudokuSolverModel, self).__init__()
+
+        self.conv1 = nn.Conv2d(1, 64, kernel_size=(3, 3), padding="same")
+        self.batch_norm1 = nn.BatchNorm2d(64)
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=(3, 3), padding="same")
+        self.batch_norm2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=(1, 1), padding="same")
+
         self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(9 * 9 * 9, 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 9 * 9 * 9)
+        self.fc = nn.Linear(128 * 81, 81 * 9)
+        self.reshape = lambda x: x.view(-1, 9, 81)
 
     def forward(self, x):
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = self.batch_norm1(x)
+
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = self.batch_norm2(x)
+
+        x = self.conv3(x)
+        x = F.relu(x)
+
         x = self.flatten(x)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.softmax(self.fc3(x), dim=1)
+        x = self.fc(x)
+        x = self.reshape(x)
+
         return x
+
+    def predict(self, data):
+        self.eval()
+        sample = data.clone()
+
+        with torch.no_grad():
+            while True:
+                output = self(sample.view(1, 1, 9, 9))
+                output = F.softmax(output, dim=2)
+                output = output.squeeze()
+
+                prediction = torch.max(output, dim=0).indices + 1
+                prediction = prediction.view(9, 9)
+                probability = torch.max(output, dim=0).values.view(9, 9)
+
+                sample = denormalize(sample).view(9, 9)
+                mask = sample == 0
+
+                if mask.sum() == 0:
+                    break
+
+                new_probability = probability * mask
+
+                index = torch.argmax(new_probability.view(-1))
+                row, column = index // 9, index % 9
+
+                value = prediction[row, column]
+                sample[row, column] = value
+                sample = normalize(sample)
+
+        return torch.round(sample).type(torch.int)
 
     def load(self, file_name="solver"):
         self.load_state_dict(torch.load(f"{file_name}.pth"))
@@ -62,9 +110,7 @@ class NumberRecognitionTrainer:
 
         self.lr = lr
         self.momentum = momentum
-        self.optimizer = optim.SGD(
-            self.model.parameters(), lr=self.lr, momentum=self.momentum
-        )
+        self.optimizer = optim.SGD(self.model.parameters(), lr=self.lr, momentum=self.momentum)
 
         # data for plotting
         self.train_counter = []
@@ -73,9 +119,7 @@ class NumberRecognitionTrainer:
         self.test_losses = []
 
     def train(self, epochs=10, log_interval=10):
-        self.test_counter = [
-            i * len(self.train_loader.dataset) for i in range(epochs + 1)
-        ]
+        self.test_counter = [i * len(self.train_loader.dataset) for i in range(epochs + 1)]
 
         self.accuracy()
 
@@ -95,8 +139,7 @@ class NumberRecognitionTrainer:
 
                     self.train_losses.append(loss.item())
                     self.train_counter.append(
-                        (batch_idx * 64)
-                        + ((epoch - 1) * len(self.train_loader.dataset))
+                        (batch_idx * 64) + ((epoch - 1) * len(self.train_loader.dataset))
                     )
 
             self.accuracy()
@@ -120,9 +163,7 @@ class NumberRecognitionTrainer:
             f"Test set: Avg. loss: {test_loss:.4f}, Accuracy: {correct}/{len(self.test_loader.dataset)} ({100.0 * correct / len(self.test_loader.dataset):.0f}%)"
         )
 
-    def test_prediction(
-        self, prediction_data, prediction_target, number_of_predictions=5
-    ):
+    def test_prediction(self, prediction_data, prediction_target, number_of_predictions=5):
         self.model.eval()
         for _ in range(10):
             wrong = 0
@@ -131,9 +172,7 @@ class NumberRecognitionTrainer:
                     output = self.model(prediction_data[i].view(1, 1, 28, 28))
                     _, predicted = torch.max(output.data, 1)
                     if predicted[0] != prediction_target[i].item():
-                        print(
-                            f"Predicted: {predicted[0]}, Actual: {prediction_target[i].item()}"
-                        )
+                        print(f"Predicted: {predicted[0]}, Actual: {prediction_target[i].item()}")
                         wrong += 1
 
             print(f"Wrong: {wrong}/{number_of_predictions}")
@@ -156,41 +195,29 @@ class NumberRecognitionTrainer:
 
 
 class SudokuSolverTrainer:
-    def __init__(self, model, lr, gamma):
-        self.model = model
-        self.lr = lr
-        self.gamma = gamma
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
-        self.criterion = nn.MSELoss()
+    def __init__(self, train_loader, test_loader, lr=0.001):
+        self.model = SudokuSolverModel()
+        self.train_loader = train_loader
+        self.test_loader = test_loader
 
-    def train_step(self, state, action, reward, next_state, done):
-        action = torch.tensor(action, dtype=torch.long)
-        reward = torch.tensor(reward, dtype=torch.float)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
 
-        if len(state.shape) == 2:
-            state = torch.unsqueeze(convert_to_tensor(state), 0)
-            next_state = torch.unsqueeze(convert_to_tensor(next_state), 0)
-            action = torch.unsqueeze(action, 0)
-            reward = torch.unsqueeze(reward, 0)
-            done = (done,)
+    def train(self, epochs=2, log_interval=100):
+        for epoch in range(epochs):
+            self.model.train()
+            for batch_idx, (data, target) in enumerate(self.train_loader):
+                self.optimizer.zero_grad()
+                output = self.model(data.unsqueeze(1))
+                loss = F.cross_entropy(output, target)
+                loss.backward()
+                self.optimizer.step()
 
-        prediction = self.model(convert_to_tensor(state))
+                if batch_idx % log_interval == 0:
+                    print(
+                        f"Epoch: {epoch + 1} / {epochs} [{batch_idx * len(data)}/{len(self.train_loader.dataset)} ({100.0 * batch_idx / len(self.train_loader):.0f}%)]\tLoss: {loss.item():.6f}"
+                    )
 
-        target = prediction.clone()
-        for index in range(len(done)):
-            Q_new = reward[index]
-            if not done[index]:
-                Q_new = reward[index] + self.gamma * torch.max(
-                    self.model(convert_to_tensor(next_state[index]))
-                )
-
-            target[index][torch.argmax(action[index]).item()] = Q_new
-
-        self.optimizer.zero_grad()
-        loss = self.criterion(target, prediction)
-        loss.backward()
-
-        self.optimizer.step()
+        print("Finished Training")
 
     def save(self, file_name="solver"):
         torch.save(self.model.state_dict(), f"{file_name}.pth")
