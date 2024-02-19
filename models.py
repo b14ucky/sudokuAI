@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import matplotlib.pyplot as plt
+from helpers import normalize, denormalize
 
 
 class NumberRecognitionModel(nn.Module):
@@ -34,6 +35,73 @@ class NumberRecognitionModel(nn.Module):
             return predicted[0].item()
 
 
+class SudokuSolverModel(nn.Module):
+    def __init__(self):
+        super(SudokuSolverModel, self).__init__()
+
+        self.conv1 = nn.Conv2d(1, 64, kernel_size=(3, 3), padding="same")
+        self.batch_norm1 = nn.BatchNorm2d(64)
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=(3, 3), padding="same")
+        self.batch_norm2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=(1, 1), padding="same")
+
+        self.flatten = nn.Flatten()
+        self.fc = nn.Linear(128 * 81, 81 * 9)
+        self.reshape = lambda x: x.view(-1, 9, 81)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = self.batch_norm1(x)
+
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = self.batch_norm2(x)
+
+        x = self.conv3(x)
+        x = F.relu(x)
+
+        x = self.flatten(x)
+        x = self.fc(x)
+        x = self.reshape(x)
+
+        return x
+
+    def predict(self, data):
+        self.eval()
+        sample = data.clone()
+
+        with torch.no_grad():
+            while True:
+                output = self(sample.view(1, 1, 9, 9))
+                output = F.softmax(output, dim=2)
+                output = output.squeeze()
+
+                prediction = torch.max(output, dim=0).indices + 1
+                prediction = prediction.view(9, 9)
+                probability = torch.max(output, dim=0).values.view(9, 9)
+
+                sample = denormalize(sample).view(9, 9)
+                mask = sample == 0
+
+                if mask.sum() == 0:
+                    break
+
+                new_probability = probability * mask
+
+                index = torch.argmax(new_probability.view(-1))
+                row, column = index // 9, index % 9
+
+                value = prediction[row, column]
+                sample[row, column] = value
+                sample = normalize(sample)
+
+        return torch.round(sample).type(torch.int)
+
+    def load(self, file_name="solver"):
+        self.load_state_dict(torch.load(f"{file_name}.pth"))
+
+
 class NumberRecognitionTrainer:
     def __init__(self, train_loader, test_loader, lr=0.01, momentum=0.5):
         self.model = NumberRecognitionModel()
@@ -42,9 +110,7 @@ class NumberRecognitionTrainer:
 
         self.lr = lr
         self.momentum = momentum
-        self.optimizer = optim.SGD(
-            self.model.parameters(), lr=self.lr, momentum=self.momentum
-        )
+        self.optimizer = optim.SGD(self.model.parameters(), lr=self.lr, momentum=self.momentum)
 
         # data for plotting
         self.train_counter = []
@@ -53,9 +119,7 @@ class NumberRecognitionTrainer:
         self.test_losses = []
 
     def train(self, epochs=10, log_interval=10):
-        self.test_counter = [
-            i * len(self.train_loader.dataset) for i in range(epochs + 1)
-        ]
+        self.test_counter = [i * len(self.train_loader.dataset) for i in range(epochs + 1)]
 
         self.accuracy()
 
@@ -75,8 +139,7 @@ class NumberRecognitionTrainer:
 
                     self.train_losses.append(loss.item())
                     self.train_counter.append(
-                        (batch_idx * 64)
-                        + ((epoch - 1) * len(self.train_loader.dataset))
+                        (batch_idx * 64) + ((epoch - 1) * len(self.train_loader.dataset))
                     )
 
             self.accuracy()
@@ -100,9 +163,7 @@ class NumberRecognitionTrainer:
             f"Test set: Avg. loss: {test_loss:.4f}, Accuracy: {correct}/{len(self.test_loader.dataset)} ({100.0 * correct / len(self.test_loader.dataset):.0f}%)"
         )
 
-    def test_prediction(
-        self, prediction_data, prediction_target, number_of_predictions=5
-    ):
+    def test_prediction(self, prediction_data, prediction_target, number_of_predictions=5):
         self.model.eval()
         for _ in range(10):
             wrong = 0
@@ -111,9 +172,7 @@ class NumberRecognitionTrainer:
                     output = self.model(prediction_data[i].view(1, 1, 28, 28))
                     _, predicted = torch.max(output.data, 1)
                     if predicted[0] != prediction_target[i].item():
-                        print(
-                            f"Predicted: {predicted[0]}, Actual: {prediction_target[i].item()}"
-                        )
+                        print(f"Predicted: {predicted[0]}, Actual: {prediction_target[i].item()}")
                         wrong += 1
 
             print(f"Wrong: {wrong}/{number_of_predictions}")
@@ -133,3 +192,37 @@ class NumberRecognitionTrainer:
         plt.xlabel("number of training examples seen")
         plt.ylabel("negative log likelihood loss")
         plt.show()
+
+
+class SudokuSolverTrainer:
+    def __init__(self, train_loader, test_loader, lr=0.001):
+        self.model = SudokuSolverModel()
+        self.train_loader = train_loader
+        self.test_loader = test_loader
+
+        self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
+
+    def train(self, epochs=2, log_interval=100):
+        for epoch in range(epochs):
+            self.model.train()
+            for batch_idx, (data, target) in enumerate(self.train_loader):
+                self.optimizer.zero_grad()
+                output = self.model(data.unsqueeze(1))
+                loss = F.cross_entropy(output, target)
+                loss.backward()
+                self.optimizer.step()
+
+                if batch_idx % log_interval == 0:
+                    print(
+                        f"Epoch: {epoch + 1} / {epochs} [{batch_idx * len(data)}/{len(self.train_loader.dataset)} ({100.0 * batch_idx / len(self.train_loader):.0f}%)]\tLoss: {loss.item():.6f}"
+                    )
+
+        print("Finished Training")
+
+    def save(self, file_name="solver"):
+        torch.save(self.model.state_dict(), f"{file_name}.pth")
+        torch.save(self.optimizer.state_dict(), f"{file_name}-optimizer.pth")
+
+    def load(self, file_name="solver"):
+        self.model.load_state_dict(torch.load(f"{file_name}.pth"))
+        self.optimizer.load_state_dict(torch.load(f"{file_name}-optimizer.pth"))

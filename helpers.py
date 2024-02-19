@@ -1,9 +1,26 @@
+import torch
 import pandas as pd
 import numpy as np
 from pynput import mouse
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
+
+
+class SudokuDataset(Dataset):
+    def __init__(self, file_path):
+        self.data = pd.read_csv(file_path)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        board = self.data.iat[idx, 0]
+        board = torch.tensor(list(map(float, board)), dtype=torch.float32).reshape((9, 9)) / 9 - 0.5
+        solution = self.data.iat[idx, 1]
+        solution = torch.tensor(list(map(float, solution)), dtype=torch.long).reshape((81,)) - 1
+
+        return board, solution
 
 
 class CustomDataset(Dataset):
@@ -28,7 +45,6 @@ class CustomDataset(Dataset):
         pixels = np.array(list(map(int, self.data[idx]["Pixels"].split())))
         pixels = pixels.reshape((28, 28)).astype(np.uint8)
 
-        # Apply any image transformations here if needed
         if self.transform:
             pixels = self.transform(pixels)
 
@@ -75,3 +91,11 @@ def display_board(board):
             table[(i, j)].set_height(0.125)
 
     plt.show()
+
+
+def normalize(board):
+    return board / 9 - 0.5
+
+
+def denormalize(board):
+    return (board + 0.5) * 9
