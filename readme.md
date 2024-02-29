@@ -12,6 +12,8 @@ To use the script, follow these steps:
    
 ```bash
 git clone https://github.com/b14ucky/sudokuAI.git
+cd sudokuAI
+```
 
 2. Install the required dependencies:
 
