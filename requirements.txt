@@ -1,0 +1,6 @@
+torch==2.1.2
+numpy==1.26.3
+opencv-python==4.9.0.80
+pandas==2.1.4
+PyAutoGUI==0.9.54
+torch==2.1.2
