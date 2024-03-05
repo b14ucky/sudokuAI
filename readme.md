@@ -62,4 +62,5 @@ The model was trained on 1 million sudoku puzzles. You can find the dataset [her
 ## References
 
 Article: https://towardsdatascience.com/solving-sudoku-with-convolution-neural-network-keras-655ba4be3b11
+
 Dataset: https://www.kaggle.com/datasets/bryanpark/sudoku
