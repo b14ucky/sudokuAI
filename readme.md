@@ -2,7 +2,9 @@
 
 ## Overview
 
-This Sudoku Solver application employs computer vision and a Convolutional Neural Network (CNN) for recognizing and solving Sudoku puzzles. The workflow involves capturing a screenshot of the Sudoku board and utilizing the CNN model to recognize the numbers in each cell.The solution is then computed using a deep learning approach. It's meant to solve Sudoku puzzles from my Sudoku app that you can find [here](https://github.com/b14ucky/sudoku-final-project).
+This Sudoku Solver application employs computer vision techniques along with a Convolutional Neural Network (CNN) to recognize and solve Sudoku puzzles. The workflow begins with capturing a screenshot of the Sudoku board, after which the CNN model is utilized to identify the numbers in each cell. The solution is then computed using a deep learning approach.
+Initially, I attempted to create a Sudoku-solving model using reinforcement learning, with the goal of achieving a high win rate. However, when the success rate did not meet expectations, I explored alternative solutions. During my research, I came across an article (link [here](https://towardsdatascience.com/solving-sudoku-with-convolution-neural-network-keras-655ba4be3b11)) that recommended the use of Convolutional Neural Networks (CNNs) for Sudoku problem-solving. Inspired by this approach, I revamped the model and transitioned to a CNN-based methodology.
+The Sudoku puzzles for this application can be accessed through my Sudoku app, available on [GitHub](https://github.com/b14ucky/sudoku-final-project).
 
 ## Usage
 
@@ -52,3 +54,12 @@ python main.py
 4. The solution is applied to the game interface, and potential mistakes are checked.
 
 5. The process stops after three mistakes or when the puzzle is completely solved.
+
+## Dataset
+
+The model was trained on 1 million sudoku puzzles. You can find the dataset [here](https://www.kaggle.com/datasets/bryanpark/sudoku).
+
+## References
+
+Article: https://towardsdatascience.com/solving-sudoku-with-convolution-neural-network-keras-655ba4be3b11
+Dataset: https://www.kaggle.com/datasets/bryanpark/sudoku
